@@ -1,0 +1,30 @@
+name: desafio
+services:
+  postgres:
+    image: postgres:17.6-bookworm
+    environment: &banco
+      POSTGRES_DB: ${POSTGRES_DB:?Defina POSTGRES_DB no .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER no .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no .env}
+    volumes:
+      - dados_postgres:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  etl:
+    build: .
+    environment:
+      <<: *banco
+      POSTGRES_HOST: postgres
+    volumes:
+      - type: bind
+        source: ${OUTPUT_DIR:-./output}
+        target: /output
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  dados_postgres:
